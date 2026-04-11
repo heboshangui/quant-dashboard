@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 自选股仪表盘 - A股量化工具</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f1117;
+            --bg-card: #1a1d27;
+            --bg-card-hover: #22263a;
+            --text-primary: #e8eaf0;
+            --text-secondary: #8b90a0;
+            --accent-green: #00d084;
+            --accent-red: #ff4757;
+            --accent-blue: #4a9eff;
+            --accent-yellow: #ffc107;
+            --border-color: #2a2d3e;
+        }
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: var(--bg-card) !important;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .navbar-brand, .nav-link {
+            color: var(--text-primary) !important;
+        }
+        .nav-link.active {
+            color: var(--accent-blue) !important;
+            border-bottom: 2px solid var(--accent-blue);
+        }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+        }
+        .card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-blue);
+        }
+        .stock-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .stock-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .stock-code {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .price-main {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        .price-up { color: var(--accent-red); }
+        .price-down { color: var(--accent-green); }
+        .price-flat { color: var(--text-secondary); }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+        .tag-up   { background: rgba(255,71,87,0.15); color: var(--accent-red); }
+        .tag-down { background: rgba(0,208,132,0.15); color: var(--accent-green); }
+        .tag-flat { background: rgba(139,144,160,0.15); color: var(--text-secondary); }
+
+        .signal-观望  { color: var(--text-secondary); }
+        .signal-谨慎  { color: var(--accent-yellow); }
+        .signal-关注  { color: var(--accent-blue); }
+        .signal-看好  { color: var(--accent-green); }
+
+        .indicator-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.85rem;
+        }
+        .indicator-item:last-child { border-bottom: none; }
+        .indicator-label { color: var(--text-secondary); }
+        .indicator-value { font-weight: 600; }
+        .indicator-help {
+            color: var(--accent-blue);
+            font-size: 0.7rem;
+            cursor: help;
+            margin-left: 4px;
+        }
+        .badge-signal {
+            font-size: 0.85rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        .loading {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 200px; color: var(--text-secondary);
+        }
+        .loading i { font-size: 2rem; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .signal-bar {
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border-color);
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        .signal-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        .signal-0 { background: var(--text-secondary); }
+        .signal-1 { background: var(--text-secondary); }
+        .signal-2 { background: var(--accent-yellow); }
+        .signal-3 { background: var(--accent-blue); }
+        .signal-4 { background: var(--accent-green); }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">📊 A股量化</a>
+        <div class="navbar-nav">
+            <a class="nav-link active" href="/">自选股</a>
+            <a class="nav-link" href="/selector">🔍 选股器</a>
+            <a class="nav-link" href="/learn">📖 新手学院</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4>📊 自选股仪表盘</h4>
+        <div>
+            <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+                <i class="fas fa-redo"></i> 刷新数据
+            </button>
+        </div>
+    </div>
+
+    <div class="row" id="stock-grid">
+        <!-- 动态加载 -->
+    </div>
+</div>
+
+<!-- Tooltip弹层 -->
+<div id="tooltip" style="display:none; position:fixed; z-index:9999;
+    background:#1a1d27; border:1px solid #4a9eff; border-radius:8px;
+    padding:10px 14px; max-width:260px; font-size:0.82rem; color:#e8eaf0;
+    box-shadow:0 4px 20px rgba(0,0,0,0.5);"></div>
+
+<script>
+const TOOLTIPS = {
+    pe: "市盈率（PE）= 公司市值 ÷ 净利润。<br>PE越低，说明估值越便宜。<br>参考范围：A股大盘平均PE约12-18倍。",
+    pb: "市净率（PB）= 公司市值 ÷ 净资产。<br>PB&lt;1说明股价低于净资产，<br>理论上更"便宜"。",
+    total_mv: "总市值 = 股价 × 总股本。<br>大盘股通常&gt;500亿，<br>小盘股通常&lt;100亿。",
+    float_mv: "流通市值 = 股价 × 流通股本。<br>实际可交易的股份市值。",
+    rev_growth: "营收增速 = (本期营收-上期营收) ÷ 上期营收×100%。<br>正值代表收入增长，越高越好。",
+    macd: "MACD（平滑异同移动平均线）<br>由DIF线、DEA线和柱状图组成。<br>主要用于判断趋势方向。",
+    kdj: "KDJ（随机指标）<br>K、D值范围0-100。<br>K&gt;80超买（可能跌），K&lt;20超卖（可能涨）。",
+    ma: "MA均线（移动平均线）<br>MA5/10/20 = 最近5/10/20日均价。<br>均线多头排列（5&gt;10&gt;20）= 强势。",
+    rsi: "RSI（相对强弱指数）<br>0-100，&gt;70超买，&lt;30超卖。<br>反映股价涨跌强弱程度。",
+    macd_golden: "MACD金叉：DIF线从下往上穿越DEA线，<br>是买入信号之一。",
+    macd_dead: "MACD死叉：DIF线从上往下穿越DEA线，<br>是卖出信号之一。",
+    kdj_golden: "KDJ金叉：K线从下往上穿越D线，<br>意味着短期可能有反弹。",
+    kdj_dead: "KDJ死叉：K线从上往下穿越D线，<br>意味着短期可能回调。",
+    ma_bullish: "均线多头排列：MA5&gt;MA10&gt;MA20，<br>说明股票处于上升趋势。",
+    ma_bearish: "均线空头排列：MA5&lt;MA10&lt;MA20，<br>说明股票处于下降趋势。",
+};
+
+let tooltip = document.getElementById('tooltip');
+
+function showTooltip(key, e) {
+    tooltip.innerHTML = TOOLTIPS[key] || '';
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 12) + 'px';
+    tooltip.style.top  = (e.clientY - 10) + 'px';
+}
+function hideTooltip() { tooltip.style.display = 'none'; }
+
+async function loadDashboard() {
+    const grid = document.getElementById('stock-grid');
+    grid.innerHTML = '<div class="loading w-100"><i class="fas fa-spinner"></i></div>';
+
+    try {
+        const resp = await fetch('/api/dashboard');
+        const json = await resp.json();
+        const stocks = json.data;
+
+        grid.innerHTML = '';
+        for (const s of stocks) {
+            grid.innerHTML += renderStockCard(s);
+        }
+    } catch(e) {
+        grid.innerHTML = '<div class="text-danger p-4">数据加载失败：'+e.message+'</div>';
+    }
+}
+
+function fmtVolume(v) {
+    if (!v) return '-';
+    if (v >= 1e8) return (v/1e8).toFixed(2)+'亿';
+    if (v >= 1e4) return (v/1e4).toFixed(2)+'万';
+    return v;
+}
+
+function renderStockCard(s) {
+    const rt   = s.realtime    || {};
+    const fund = s.fundamental || {};
+    const sig  = s.signals     || {};
+    const br   = s.breakout    || {};
+
+    const priceClass = rt.change_pct > 0 ? 'price-up' : rt.change_pct < 0 ? 'price-down' : 'price-flat';
+    const tagClass   = rt.change_pct > 0 ? 'tag-up'   : rt.change_pct < 0 ? 'tag-down'   : 'tag-flat';
+    const pctDisplay = rt.change_pct != null ? (rt.change_pct > 0 ? '+'+rt.change_pct.toFixed(2) : rt.change_pct.toFixed(2))+'%' : '-';
+
+    const signalColor = {
+        '观望': 'secondary', '谨慎': 'warning', '关注': 'primary', '看好': 'success'
+    }[sig.overall] || 'secondary';
+
+    // 综合信号进度（0-4分）
+    const score = sig.score || 0;
+    const fillMap = {0:'signal-0',1:'signal-1',2:'signal-2',3:'signal-3',4:'signal-4'};
+    const fillClass = fillMap[score] || 'signal-0';
+    const fillPct = score * 25;
+
+    const card = `
+    <div class="col-12 col-md-6 col-xl-4 mb-4">
+        <div class="card p-3">
+            <!-- 股票基本信息 -->
+            <div class="stock-header">
+                <div>
+                    <div class="stock-name">${s.name}</div>
+                    <div class="stock-code">${s.code}</div>
+                </div>
+                <div class="ms-auto text-end">
+                    <div class="price-main ${priceClass}">${rt.price || '-'}</div>
+                    <span class="tag ${tagClass}">${pctDisplay}</span>
+                </div>
+            </div>
+
+            <div class="small mb-2" style="color:var(--text-secondary)">
+                成交量: ${fmtVolume(rt.volume)} &nbsp;|&nbsp; 成交额: ${rt.amount||'-'}亿元
+            </div>
+
+            <!-- 基本面 -->
+            <div class="card mb-2" style="background:#161822;">
+                <div class="card-body py-2 px-3">
+                    <div class="text-secondary small mb-1">📋 基本面 <span class="indicator-help" onmouseover="showTooltip('pe',event)" onmouseout="hideTooltip()">?</span></div>
+                    <div class="row g-0 text-center">
+                        <div class="col-4">
+                            <div class="indicator-value">${fund.pe != null ? fund.pe : '-'}</div>
+                            <div class="indicator-label small">PE <span class="indicator-help" onmouseover="showTooltip('pe',event)" onmouseout="hideTooltip()">?</span></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="indicator-value">${fund.pb != null ? fund.pb : '-'}</div>
+                            <div class="indicator-label small">PB <span class="indicator-help" onmouseover="showTooltip('pb',event)" onmouseout="hideTooltip()">?</span></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="indicator-value">${fund.total_mv != null ? fund.total_mv+'亿' : '-'}</div>
+                            <div class="indicator-label small">总市值 <span class="indicator-help" onmouseover="showTooltip('total_mv',event)" onmouseout="hideTooltip()">?</span></div>
+                        </div>
+                    </div>
+                    <div class="row g-0 text-center mt-1">
+                        <div class="col-4">
+                            <div class="indicator-value" style="font-size:0.8rem">${fund.float_mv != null ? fund.float_mv+'亿' : '-'}</div>
+                            <div class="indicator-label small">流通市值</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="indicator-value" style="font-size:0.8rem;color:${(fund.rev_growth||0)>=0?'var(--accent-green)':'var(--accent-red)'}">
+                                ${fund.rev_growth != null ? fund.rev_growth+'%' : '-'}
+                            </div>
+                            <div class="indicator-label small">营收增速 <span class="indicator-help" onmouseover="showTooltip('rev_growth',event)" onmouseout="hideTooltip()">?</span></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="indicator-value" style="font-size:0.8rem">${br.year_high ? '✅' : '—'}</div>
+                            <div class="indicator-label small">突破年高</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 技术面 -->
+            <div class="card mb-2" style="background:#161822;">
+                <div class="card-body py-2 px-3">
+                    <div class="text-secondary small mb-1">📈 技术面 <span class="indicator-help" onmouseover="showTooltip('macd',event)" onmouseout="hideTooltip()">?</span></div>
+                    <div class="row g-0 text-center">
+                        <div class="col-4">
+                            <div class="indicator-value" style="font-size:0.8rem;color:${sig.macd_bullish?'var(--accent-green)':'var(--accent-red)'}">
+                                ${sig.macd_value != null ? sig.macd_value : '-'}
+                            </div>
+                            <div class="indicator-label small">
+                                MACD柱 <span class="indicator-help" onmouseover="showTooltip('macd',event)" onmouseout="hideTooltip()">?</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="indicator-value" style="font-size:0.8rem;color:${sig.macd_golden?'var(--accent-green)':'var(--text-secondary)'}">
+                                ${sig.macd_golden ? '✅金叉' : (sig.macd_dead ? '❌死叉' : '—')}
+                            </div>
+                            <div class="indicator-label small">MACD <span class="indicator-help" onmouseover="showTooltip('macd_golden',event)" onmouseout="hideTooltip()">?</span></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="indicator-value" style="font-size:0.8rem;color:${sig.kdj_golden?'var(--accent-green)':sig.kdj_dead?'var(--accent-red)':'var(--text-secondary)'}">
+                                ${sig.kdj_golden ? '✅金叉' : sig.kdj_dead ? '❌死叉' : '—'}
+                            </div>
+                            <div class="indicator-label small">KDJ <span class="indicator-help" onmouseover="showTooltip('kdj',event)" onmouseout="hideTooltip()">?</span></div>
+                        </div>
+                    </div>
+                    <div class="row g-0 text-center mt-1">
+                        <div class="col-4">
+                            <div class="indicator-value" style="font-size:0.8rem">${sig.rsi != null ? sig.rsi : '-'}</div>
+                            <div class="indicator-label small">RSI <span class="indicator-help" onmouseover="showTooltip('rsi',event)" onmouseout="hideTooltip()">?</span></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="indicator-value" style="font-size:0.75rem;color:${sig.ma_bullish?'var(--accent-green)':sig.ma_bearish?'var(--accent-red)':'var(--text-secondary)'}">
+                                ${sig.ma_bullish?'多头':sig.ma_bearish?'空头':'混合'}
+                            </div>
+                            <div class="indicator-label small">均线 <span class="indicator-help" onmouseover="showTooltip('ma',event)" onmouseout="hideTooltip()">?</span></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="indicator-value" style="font-size:0.75rem">
+                                MA5:${sig.ma5||'-'}<br>MA20:${sig.ma20||'-'}
+                            </div>
+                            <div class="indicator-label small">均价</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 综合信号 -->
+            <div class="text-center">
+                <div class="mb-1">
+                    <span class="badge bg-${signalColor} badge-signal">
+                        🔮 综合信号：${sig.overall || '未知'}
+                    </span>
+                </div>
+                <div class="signal-bar">
+                    <div class="signal-fill ${fillClass}" style="width:${fillPct}%"></div>
+                </div>
+                <div class="small mt-1" style="color:var(--text-secondary)">
+                    ${sig.score||0}/4 指标向好
+                </div>
+            </div>
+
+            <!-- 查看K线图按钮 -->
+            <button class="btn btn-sm btn-outline-primary w-100 mt-2"
+                onclick="openChart('${s.market}','${s.stock_code}','${s.name}')">
+                📈 查看K线图
+            </button>
+        </div>
+    </div>`;
+    return card;
+}
+
+// 打开K线图模态窗口
+async function openChart(market, code, name) {
+    // 简单实现：在新窗口打开
+    window.open(`/chart?market=${market}&code=${code}`, '_blank', 'width=1000,height=700');
+}
+
+loadDashboard();
+</script>
+</body>
+</html>
