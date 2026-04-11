@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📖 新手学院 - A股量化工具</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f1117; --bg-card: #1a1d27; --bg-card-hover: #22263a;
+            --text-primary: #e8eaf0; --text-secondary: #8b90a0;
+            --accent-green: #00d084; --accent-red: #ff4757;
+            --accent-blue: #4a9eff; --accent-yellow: #ffc107;
+            --border-color: #2a2d3e;
+        }
+        body { background: var(--bg-primary); color: var(--text-primary); font-family: -apple-system, "PingFang SC", sans-serif; }
+        .navbar { background: var(--bg-card) !important; border-bottom: 1px solid var(--border-color); }
+        .navbar-brand, .nav-link { color: var(--text-primary) !important; }
+        .nav-link { opacity: 0.8; }
+        .nav-link:hover, .nav-link.active { opacity: 1; }
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary); }
+        .lesson-card {
+            cursor: pointer; transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        .lesson-card:hover {
+            border-left-color: var(--accent-blue);
+            background: var(--bg-card-hover);
+        }
+        .lesson-card.active {
+            border-left-color: var(--accent-blue);
+            background: var(--bg-card-hover);
+        }
+        .lesson-title { font-weight: 700; font-size: 1rem; }
+        .lesson-desc { color: var(--text-secondary); font-size: 0.82rem; margin-top: 4px; }
+        .lesson-tag {
+            display: inline-block; padding: 2px 8px; border-radius: 6px;
+            font-size: 0.7rem; background: rgba(74,158,255,0.15); color: var(--accent-blue);
+        }
+        .content-area { line-height: 1.8; }
+        .content-area h4 { color: var(--accent-blue); margin-top: 24px; margin-bottom: 12px; }
+        .content-area h5 { color: var(--accent-yellow); margin-top: 18px; margin-bottom: 8px; }
+        .content-area p { color: var(--text-secondary); margin-bottom: 12px; }
+        .formula {
+            background: #161822; border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 12px 16px;
+            font-family: "Courier New", monospace; font-size: 0.88rem;
+            color: var(--accent-green); margin: 12px 0;
+        }
+        .signal-demo {
+            display: flex; align-items: center; gap: 16px; margin: 12px 0;
+            background: #161822; border-radius: 8px; padding: 16px;
+        }
+        .signal-demo-icon { font-size: 2.5rem; }
+        .signal-demo-text { font-size: 0.85rem; color: var(--text-secondary); }
+        .signal-demo-label { font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+        .back-btn {
+            display: inline-block; padding: 6px 14px; border-radius: 8px;
+            background: rgba(74,158,255,0.15); color: var(--accent-blue);
+            font-size: 0.85rem; cursor: pointer; text-decoration: none;
+            margin-bottom: 16px;
+        }
+        .back-btn:hover { background: rgba(74,158,255,0.25); color: var(--accent-blue); }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">📊 A股量化</a>
+        <div class="navbar-nav">
+            <a class="nav-link" href="/">自选股</a>
+            <a class="nav-link" href="/selector">🔍 选股器</a>
+            <a class="nav-link active" href="/learn">📖 新手学院</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4">
+    <div class="row">
+        <!-- 左侧目录 -->
+        <div class="col-md-3 mb-3">
+            <h5 style="margin-bottom:16px">📚 课程目录</h5>
+            <div class="list-group" style="gap:8px">
+                <div class="lesson-card list-group-item p-3" onclick="showLesson(0)" id="lesson-tab-0">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="lesson-title">📊 MACD 指标</div>
+                            <div class="lesson-desc">平滑异同移动平均线，金叉死叉判断趋势</div>
+                        </div>
+                    </div>
+                    <span class="lesson-tag mt-1">技术指标</span>
+                </div>
+                <div class="lesson-card list-group-item p-3" onclick="showLesson(1)" id="lesson-tab-1">
+                    <div class="lesson-title">📈 KDJ 指标</div>
+                    <div class="lesson-desc">随机指标，判断超买超卖，把握买卖时机</div>
+                    <span class="lesson-tag mt-1">技术指标</span>
+                </div>
+                <div class="lesson-card list-group-item p-3" onclick="showLesson(2)" id="lesson-tab-2">
+                    <div class="lesson-title">🔗 均线系统</div>
+                    <div class="lesson-desc">MA5/10/20多头排列，空头排列识别趋势</div>
+                    <span class="lesson-tag mt-1">技术指标</span>
+                </div>
+                <div class="lesson-card list-group-item p-3" onclick="showLesson(3)" id="lesson-tab-3">
+                    <div class="lesson-title">💰 PE 和 PB</div>
+                    <div class="lesson-desc">市盈率市净率，判断估值高低贵贱</div>
+                    <span class="lesson-tag mt-1">估值指标</span>
+                </div>
+                <div class="lesson-card list-group-item p-3" onclick="showLesson(4)" id="lesson-tab-4">
+                    <div class="lesson-title">📋 RSI 指标</div>
+                    <div class="lesson-desc">相对强弱指数，超买超卖的重要信号</div>
+                    <span class="lesson-tag mt-1">技术指标</span>
+                </div>
+                <div class="lesson-card list-group-item p-3" onclick="showLesson(5)" id="lesson-tab-5">
+                    <div class="lesson-title">🏢 基本面分析</div>
+                    <div class="lesson-desc">营收、净利润、市值——读懂公司基本面</div>
+                    <span class="lesson-tag mt-1">基本面</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧内容 -->
+        <div class="col-md-9">
+            <div id="lesson-content" class="card p-4 content-area">
+                <!-- 动态内容 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const LESSONS = [
+    {
+        title: "📊 MACD 指标详解",
+        content: `
+            <h4>什么是 MACD？</h4>
+            <p>MACD（Moving Average Convergence Divergence，平滑异同移动平均线）是由Gerald Appel发明的趋势跟踪指标，由三条线组成：<strong>DIF线</strong>（快线）、<strong>DEA线</strong>（慢线）和<strong>柱状图</strong>（MACD柱）。</p>
+
+            <div class="formula">
+DIF = EMA(12日收盘) - EMA(26日收盘)    ← 快线
+DEA = EMA(DIF, 9)                       ← 慢线
+MACD柱 = (DIF - DEA) × 2               ← 柱状图放大显示
+            </div>
+
+            <h5>🔑 核心用法：金叉与死叉</h5>
+            <div class="signal-demo">
+                <div class="signal-demo-icon">✅</div>
+                <div>
+                    <div class="signal-demo-label" style="color:var(--accent-green)">MACD 金叉（买入信号）</div>
+                    <div class="signal-demo-text">DIF 线从下往上穿过 DEA 线，说明短期走势转强，可能迎来上涨。金叉位置越低，买入信号越强。</div>
+                </div>
+            </div>
+            <div class="signal-demo">
+                <div class="signal-demo-icon">❌</div>
+                <div>
+                    <div class="signal-demo-label" style="color:var(--accent-red)">MACD 死叉（卖出信号）</div>
+                    <div class="signal-demo-text">DIF 线从上往下穿过 DEA 线，说明短期走势转弱，可能开始下跌。死叉位置越高，卖出信号越强。</div>
+                </div>
+            </div>
+
+            <h5>📊 MACD 柱状图</h5>
+            <p>MACD柱反映了DIF与DEA之间的差距大小：</p>
+            <ul>
+                <li>柱状图由绿转红（负转正）→ 多头信号</li>
+                <li>柱状图由红转绿（正转负）→ 空头信号</li>
+                <li>柱状图变长 → 趋势加速</li>
+                <li>柱状图缩短 → 趋势可能衰竭</li>
+            </ul>
+
+            <h5>⚠️ 注意事项</h5>
+            <p>MACD 在横盘震荡行情中容易产生频繁的金叉死叉（假信号），建议配合其他指标（如均线、RSI）一起使用。在强势单边行情中，MACD的准确性更高。</p>
+        `
+    },
+    {
+        title: "📈 KDJ 指标详解",
+        content: `
+            <h4>什么是 KDJ？</h4>
+            <p>KDJ（随机指标）由George Lane发明，是一种超买超卖指标，由三条线组成：<strong>K线</strong>（快速线）、<strong>D线</strong>（慢速线）和<strong>J线</strong>（敏感线，K×3-D×2）。数值范围都在0~100之间。</p>
+
+            <div class="formula">
+RSV = (收盘价 - N日最低价) / (N日最高价 - N日最低价) × 100
+K = RSV的M日指数平滑移动平均
+D = K的M日简单移动平均
+J = 3×K - 2×D
+            </div>
+
+            <p>通常 N=9，M1=3，M2=3。</p>
+
+            <h5>🔑 核心用法：超买超卖 + 金叉死叉</h5>
+            <div class="signal-demo">
+                <div class="signal-demo-icon">🔥</div>
+                <div>
+                    <div class="signal-demo-label" style="color:var(--accent-red)">KDJ 超买区（K>80）</div>
+                    <div class="signal-demo-text">K值进入80以上区域，说明股价短期内涨得过快，可能面临回调风险。但这不代表立刻卖出！</div>
+                </div>
+            </div>
+            <div class="signal-demo">
+                <div class="signal-demo-icon">❄️</div>
+                <div>
+                    <div class="signal-demo-label" style="color:var(--accent-green)">KDJ 超卖区（K<20）</div>
+                    <div class="signal-demo-text">K值进入20以下区域，说明股价短期内跌得过多，可能存在反弹机会。但这不代表立刻买入！</div>
+                </div>
+            </div>
+            <div class="signal-demo">
+                <div class="signal-demo-icon">✅</div>
+                <div>
+                    <div class="signal-demo-label" style="color:var(--accent-green)">KDJ 金叉（买入信号）</div>
+                    <div class="signal-demo-text">K线从下往上穿越D线，且发生在20附近的超卖区时，信号更可靠。</div>
+                </div>
+            </div>
+            <div class="signal-demo">
+                <div class="signal-demo-icon">❌</div>
+                <div>
+                    <div class="signal-demo-label" style="color:var(--accent-red)">KDJ 死叉（卖出信号）</div>
+                    <div class="signal-demo-text">K线从上往下穿越D线，且发生在80附近的超买区时，信号更可靠。</div>
+                </div>
+            </div>
+
+            <h5>⚠️ 注意事项</h5>
+            <p>KDJ反应非常灵敏，在震荡行情中信号频繁，容易被"打脸"。建议结合趋势指标（均线、MACD）综合判断，不要单独依赖KDJ。</p>
+        `
+    },
+    {
+        title: "🔗 均线系统详解",
+        content: `
+            <h4>什么是均线（MA）？</h4>
+            <p>移动平均线（MA，Moving Average）是一定时期内的平均价格连线。例如MA5就是最近5个交易日收盘价的平均值，每天更新一条点，连起来就是线。</p>
+
+            <div class="formula">
+MA5  = 最近5个交易日收盘价之和 / 5     ← 反映短期趋势
+MA10 = 最近10个交易日收盘价之和 / 10   ← 反映中期趋势
+MA20 = 最近20个交易日收盘价之和 / 20   ← 反映中长期趋势
+MA60 = 最近60个交易日收盘价之和 / 60   ← 反映长期趋势（牛市/熊市分界线）
+            </div>
+
+            <h5>🔑 核心用法：多头排列 vs 空头排列</h5>
+            <div class="signal-demo">
+                <div class="signal-demo-icon">📈</div>
+                <div>
+                    <div class="signal-demo-label" style="color:var(--accent-green)">均线多头排列（强烈买入信号）</div>
+                    <div class="signal-demo-text">MA5 &gt; MA10 &gt; MA20，且所有均线向上发散。<br>说明股价处于<strong>上升趋势</strong>，短期、中期、长期都在上涨。趋势一旦形成，不轻易改变。</div>
+                </div>
+            </div>
+            <div class="signal-demo">
+                <div class="signal-demo-icon">📉</div>
+                <div>
+                    <div class="signal-demo-label" style="color:var(--accent-red)">均线空头排列（强烈卖出信号）</div>
+                    <div class="signal-demo-text">MA5 &lt; MA10 &lt; MA20，且所有均线向下发散。<br>说明股价处于<strong>下降趋势</strong>，短期、中期、长期都在下跌。此时不宜抄底。</div>
+                </div>
+            </div>
+
+            <h5>🔗 均线粘合与发散</h5>
+            <p>当多条均线纠缠在一起时，叫"均线粘合"，往往意味着行情即将选择方向——要么大涨，要么大跌。粘合后向上发散看多，向下发散看空。</p>
+
+            <h5>⚠️ 注意事项</h5>
+            <p>均线是<strong>滞后指标</strong>——它反映的是过去的价格，趋势形成后才能确认。单独使用均线容易错过最佳买卖点，建议结合KDJ、MACD等先行指标使用。</p>
+        `
+    },
+    {
+        title: "💰 PE 和 PB 详解",
+        content: `
+            <h4>什么是市盈率（PE）？</h4>
+            <p>PE（P/E Ratio，Price-to-Earnings Ratio）是股票估值最常用的指标，表示投资者为获得1元净利润愿意支付的价格。</p>
+
+            <div class="formula">
+PE = 当前总市值 / 净利润 = 股价 / 每股收益（EPS）
+            </div>
+
+            <p>举例：一股票现价10元，每年每股收益0.5元，则 PE=10/0.5=20，意味着你愿意用20年的回本来持有这只股票。</p>
+
+            <h5>如何用PE判断贵贱？</h5>
+            <ul>
+                <li>PE &lt; 10：相对便宜（但也要看行业和成长性）</li>
+                <li>PE = 10~20：正常区间</li>
+                <li>PE = 20~40：偏贵，需要成长性支撑</li>
+                <li>PE &gt; 40：偏高，可能是热门题材股</li>
+                <li>PE &lt; 0：亏损股，不能用PE估值</li>
+            </ul>
+
+            <h4>什么是市净率（PB）？</h4>
+            <p>PB（P/B Ratio，Price-to-Book Ratio）是股价与每股净资产的比值，反映的是股票的"清算价值"参考。</p>
+
+            <div class="formula">
+PB = 当前总市值 / 净资产 = 股价 / 每股净资产
+            </div>
+
+            <p>举例：每股净资产5元的股票，现价10元，则PB=2倍。</p>
+
+            <h5>如何用PB判断贵贱？</h5>
+            <ul>
+                <li>PB &lt; 1：股价低于净资产，理论上"打折"，在银行、钢铁等重资产行业有参考意义</li>
+                <li>PB = 1~3：正常区间</li>
+                <li>PB &gt; 5：偏高，通常是成长股或热门股</li>
+            </ul>
+
+            <h5>⚠️ 注意事项</h5>
+            <p>PE和PB都是<strong>相对估值</strong>，不同行业差别很大：科技股PE可以高达100倍，而银行股PE往往只有5-6倍。同行业比较才有意义。另外，周期股（钢铁、煤炭等）PE低反而可能是高点（利润最好的时候），需要谨慎。</p>
+        `
+    },
+    {
+        title: "📋 RSI 指标详解",
+        content: `
+            <h4>什么是 RSI？</h4>
+            <p>RSI（Relative Strength Index，相对强弱指数）由J. Welles Wilder发明，用于衡量股价涨跌的强弱程度，数值范围 0~100。</p>
+
+            <div class="formula">
+RSI = 100 - 100 / (1 + RS)
+RS = N日内上涨幅度均值 / N日内下跌幅度均值
+            </div>
+
+            <p>默认参数 N=14，即最近14个交易日的涨跌。</p>
+
+            <h5>🔑 核心用法：超买超卖</h5>
+            <div class="signal-demo">
+                <div class="signal-demo-icon">🔴</div>
+                <div>
+                    <div class="signal-demo-label" style="color:var(--accent-red)">RSI 超买区（RSI &gt; 70）</div>
+                    <div class="signal-demo-text">过去14天上涨幅度明显大于下跌，股价短期内可能涨过头，存在回调风险。<strong>但强势股可以长时间维持在70以上！</strong></div>
+                </div>
+            </div>
+            <div class="signal-demo">
+                <div class="signal-demo-icon">🟢</div>
+                <div>
+                    <div class="signal-demo-label" style="color:var(--accent-green)">RSI 超卖区（RSI &lt; 30）</div>
+                    <div class="signal-demo-text">过去14天下跌幅度明显大于上涨，股价短期内超跌，可能存在反弹机会。<strong>但弱势股可以长时间维持在30以下！</strong></div>
+                </div>
+            </div>
+
+            <h5>📊 RSI 的特殊用法</h5>
+            <ul>
+                <li><strong>RSI 背离</strong>：股价创新低但RSI没有创新低，是潜在买入信号（底背离）</li>
+                <li><strong>RSI 高位死叉</strong>：RSI&gt;70时死叉（RSI从上往下），卖出信号更可靠</li>
+                <li><strong>RSI 低位金叉</strong>：RSI&lt;30时金叉（RSI从下往上），买入信号更可靠</li>
+            </ul>
+
+            <h5>⚠️ 注意事项</h5>
+            <p>RSI在单边强势行情中会反复钝化（一直在70以上不下来），此时超买不代表要跌。在震荡行情中RSI准确度更高。建议配合趋势指标使用。</p>
+        `
+    },
+    {
+        title: "🏢 基本面分析入门",
+        content: `
+            <h4>什么是基本面分析？</h4>
+            <p>基本面分析是通过研究公司的<strong>财务数据、经营情况、行业地位</strong>来判断股票的真实价值，与技术分析（看图表）不同。巴菲特就是基本面分析的代表性人物。</p>
+
+            <h4>📊 核心财务指标</h4>
+
+            <h5>1. 净利润</h5>
+            <p>公司一年赚了多少钱（扣除所有成本和税之后）。<strong>净利润持续增长</strong>是好公司的标志。注意看"扣非净利润"（扣除一次性收益/损失后的真实利润）。</p>
+
+            <h5>2. 营收（营业收入）</h5>
+            <p>公司卖产品/服务一共收了多少钱。营收增速 &gt; 20% 通常被认为成长性较好。营收不增长，利润增长往往难以持续。</p>
+
+            <h5>3. 市值（总市值 / 流通市值）</h5>
+            <div class="formula">
+总市值 = 股价 × 总股本（所有股份的价值）
+流通市值 = 股价 × 流通股本（实际可以买卖的股份价值）
+市値大小参考：
+  超大盘：&gt;10000亿（如工商银行）
+  大盘：500亿~10000亿（如比亚迪）
+  中盘：100亿~500亿
+  小盘：&lt;100亿
+            </div>
+
+            <h5>4. 毛利率与净利率</h5>
+            <p><strong>毛利率</strong> = (营收-成本)/营收，毛利率高说明公司产品有定价权（如茅台毛利率>90%）。<strong>净利率</strong> = 净利润/营收，扣除所有费用后剩多少。</p>
+
+            <h5>5. 资产负债率</h5>
+            <p>公司资产中有多少是借来的。负债率>70%的公司要警惕，尤其是重资产行业（房地产、钢铁）。</p>
+
+            <h4>🏭 为什么要关注基本面？</h4>
+            <ul>
+                <li>好公司 = 净利润持续增长 = 股价长期向上的基础</li>
+                <li>估值低（PE/PB低）= 安全边际，下跌空间有限</li>
+                <li>好行业 + 好公司 + 好价格 = 价值投资的"三好学生"</li>
+            </ul>
+
+            <h4>⚠️ 注意事项</h4>
+            <p>基本面分析是<strong>长线思维</strong>，用好基本面的公司，股价可能3-5年才体现价值。短线交易者更多参考技术面。两者结合使用效果更好！</p>
+        `
+    }
+];
+
+let currentLesson = 0;
+
+function showLesson(idx) {
+    currentLesson = idx;
+    const lesson = LESSONS[idx];
+
+    // 更新左侧高亮
+    document.querySelectorAll('.lesson-card').forEach((el, i) => {
+        el.classList.toggle('active', i === idx);
+    });
+
+    // 渲染右侧内容
+    document.getElementById('lesson-content').innerHTML = `
+        <div class="back-btn" onclick="showLesson(${idx === 0 ? LESSONS.length-1 : idx-1})">
+            ← 上一课
+        </div>
+        <div class="back-btn" style="margin-left:8px" onclick="showLesson(${idx === LESSONS.length-1 ? 0 : idx+1})">
+            下一课 →
+        </div>
+        ${lesson.content}
+    `;
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// 默认显示第一课
+showLesson(0);
+</script>
+</body>
+</html>
