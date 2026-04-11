@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 选股器 - A股量化工具</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f1117; --bg-card: #1a1d27; --bg-card-hover: #22263a;
+            --text-primary: #e8eaf0; --text-secondary: #8b90a0;
+            --accent-green: #00d084; --accent-red: #ff4757;
+            --accent-blue: #4a9eff; --border-color: #2a2d3e;
+        }
+        body { background: var(--bg-primary); color: var(--text-primary); font-family: -apple-system, "PingFang SC", sans-serif; }
+        .navbar { background: var(--bg-card) !important; border-bottom: 1px solid var(--border-color); }
+        .navbar-brand, .nav-link { color: var(--text-primary) !important; }
+        .nav-link { opacity: 0.8; }
+        .nav-link:hover, .nav-link.active { opacity: 1; color: var(--accent-blue) !important; }
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary); }
+        .filter-btn {
+            padding: 10px 18px; border-radius: 10px; border: 1px solid var(--border-color);
+            background: var(--bg-card); color: var(--text-primary); cursor: pointer;
+            font-size: 0.9rem; transition: all 0.2s; text-align: left;
+        }
+        .filter-btn:hover { border-color: var(--accent-blue); background: var(--bg-card-hover); }
+        .filter-btn.active { border-color: var(--accent-blue); background: rgba(74,158,255,0.15); color: var(--accent-blue); }
+        .filter-btn i { margin-right: 8px; }
+        .result-table { width: 100%; border-collapse: collapse; }
+        .result-table th {
+            background: #161822; color: var(--text-secondary); padding: 8px 12px;
+            font-size: 0.78rem; text-align: left; border-bottom: 1px solid var(--border-color);
+        }
+        .result-table td {
+            padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 0.85rem;
+        }
+        .result-table tr:hover td { background: var(--bg-card-hover); }
+        .price-up { color: var(--accent-red); }
+        .price-down { color: var(--accent-green); }
+        .tag { display:inline-block; padding:2px 8px; border-radius:6px; font-size:0.72rem; }
+        .tag-up { background:rgba(255,71,87,0.15);color:var(--accent-red); }
+        .tag-down { background:rgba(0,208,132,0.15);color:var(--accent-green); }
+        .tag-neutral { background:rgba(139,144,160,0.15);color:var(--text-secondary); }
+        .loading { text-align:center; padding:40px; color:var(--text-secondary); }
+        .loading i { font-size:2rem; animation:spin 1s linear infinite; display:block; margin-bottom:10px; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">📊 A股量化</a>
+        <div class="navbar-nav">
+            <a class="nav-link" href="/">自选股</a>
+            <a class="nav-link active" href="/selector">🔍 选股器</a>
+            <a class="nav-link" href="/learn">📖 新手学院</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4">
+    <h4 class="mb-3">🔍 选股器</h4>
+    <p class="small" style="color:var(--text-secondary)">基于技术指标筛选股票，每次最多返回20条结果。</p>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-lg-2">
+            <button class="filter-btn active w-100" onclick="setFilter('limit_up', this)">
+                <i class="fas fa-fire"></i> 涨停股
+            </button>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <button class="filter-btn w-100" onclick="setFilter('year_high', this)">
+                <i class="fas fa-arrow-up"></i> 突破年高
+            </button>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <button class="filter-btn w-100" onclick="setFilter('half_year_high', this)">
+                <i class="fas fa-chart-line"></i> 突破半年高
+            </button>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <button class="filter-btn w-100" onclick="setFilter('macd_golden', this)">
+                <i class="fas fa-crosshairs"></i> MACD金叉
+            </button>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <button class="filter-btn w-100" onclick="setFilter('kdj_golden', this)">
+                <i class="fas fa-exchange-alt"></i> KDJ金叉
+            </button>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <button class="filter-btn w-100" onclick="setFilter('ma_bullish', this)">
+                <i class="fas fa-chart-bar"></i> 均线多头
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div id="result-area">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    点击上方条件开始筛选...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentFilter = 'limit_up';
+
+const FILTER_NAMES = {
+    limit_up: '涨停股',
+    year_high: '突破年高',
+    half_year_high: '突破半年高',
+    macd_golden: 'MACD金叉',
+    kdj_golden: 'KDJ金叉',
+    ma_bullish: '均线多头排列',
+};
+
+function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadResults();
+}
+
+async function loadResults() {
+    const area = document.getElementById('result-area');
+    area.innerHTML = `<div class="loading"><i class="fas fa-spinner"></i>正在筛选${FILTER_NAMES[currentFilter]}...</div>`;
+
+    try {
+        const resp = await fetch(`/api/selector?filter=${currentFilter}&limit=20`);
+        const json = await resp.json();
+        const data = json.data || [];
+
+        if (data.length === 0) {
+            area.innerHTML = `<div class="loading">未找到符合条件的股票</div>`;
+            return;
+        }
+
+        let html = `
+        <div style="padding:8px 16px; font-size:0.78rem; color:var(--text-secondary); border-bottom:1px solid var(--border-color);">
+            找到 <strong style="color:var(--accent-blue)">${data.length}</strong> 只股票（${FILTER_NAMES[currentFilter]}）
+        </div>
+        <div style="overflow-x:auto">
+        <table class="result-table">
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>股票名称</th>
+                    <th>代码</th>
+                    <th>现价</th>
+                    <th>涨跌幅</th>
+                    <th>筛选原因</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        data.forEach((row, i) => {
+            const pct = row.change_pct;
+            const tagClass = pct > 0 ? 'tag-up' : pct < 0 ? 'tag-down' : 'tag-neutral';
+            const pctStr = pct != null ? (pct > 0 ? '+'+pct.toFixed(2) : pct.toFixed(2))+'%' : '-';
+            html += `
+            <tr>
+                <td>${i+1}</td>
+                <td><strong>${row.name}</strong></td>
+                <td style="color:var(--text-secondary)">${row.code}</td>
+                <td>${row.price || '-'}</td>
+                <td><span class="tag ${tagClass}">${pctStr}</span></td>
+                <td><span style="color:var(--accent-blue)">${row.reason || '-'}</span></td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+        area.innerHTML = html;
+    } catch(e) {
+        area.innerHTML = `<div class="loading" style="color:var(--accent-red)">加载失败：${e.message}</div>`;
+    }
+}
+
+// 默认加载
+loadResults();
+</script>
+</body>
+</html>
