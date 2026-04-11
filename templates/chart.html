@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📈 K线图 - A股量化工具</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+    <style>
+        :root { --bg:#0f1117; --text:#e8eaf0; --border:#2a2d3e; --accent:#4a9eff; }
+        body { background:var(--bg); color:var(--text); font-family:-apple-system,"PingFang SC",sans-serif; margin:0; padding:0; }
+        .header { background:#1a1d27; border-bottom:1px solid var(--border); padding:12px 20px; display:flex; align-items:center; gap:16px; }
+        .header h4 { margin:0; flex:1; }
+        .header a { color:var(--accent); text-decoration:none; font-size:0.85rem; }
+        #chart { width:100%; height:500px; }
+        .info-bar { display:flex; gap:16px; padding:8px 20px; background:#161822; font-size:0.82rem; color:#8b90a0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+        .info-item { display:flex; gap:6px; }
+        .info-item span { color:var(--text); font-weight:600; }
+        .info-up span { color:#ff4757; }
+        .info-down span { color:#00d084; }
+        .chart-row { display:flex; }
+        .chart-row > div { flex:1; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h4>📈 <span id="stock-name">加载中...</span> <span id="stock-code" style="color:#8b90a0;font-size:0.85rem"></span></h4>
+    <a href="javascript:window.close()">← 返回</a>
+</div>
+<div class="info-bar" id="info-bar"></div>
+<div id="chart"></div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const market = params.get('market') || 'sz';
+const code = params.get('code') || '002119';
+document.getElementById('stock-code').textContent = market + code;
+
+async function loadChart() {
+    try {
+        const resp = await fetch(`/api/chart/${market}/${code}`);
+        const json = await resp.json();
+        if (json.code !== 0) { alert('数据加载失败'); return; }
+
+        const { dates, ohlc, ma, macd, kdj, rsi } = json;
+
+        // 提取OHLC
+        const opens  = ohlc.map(o => o[1]);
+        const highs  = ohlc.map(o => o[4]);
+        const lows   = ohlc.map(o => o[3]);
+        const closes = ohlc.map(o => o[2]);
+
+        // 信号计算
+        const dif = macd.dif;
+        const dea = macd.dea;
+        const macdHist = macd.hist;
+
+        // KDJ
+        const K = kdj.K, D = kdj.D, J = kdj.J;
+
+        // 信息栏
+        const lastClose = closes[closes.length-1];
+        const prevClose  = closes[closes.length-2] || lastClose;
+        const change = lastClose - prevClose;
+        const pct    = (change/prevClose*100).toFixed(2);
+        const upDown = pct >= 0 ? 'info-up' : 'info-down';
+        const sign   = pct >= 0 ? '+' : '';
+
+        document.getElementById('stock-name').textContent = market+code;
+        document.getElementById('info-bar').innerHTML = `
+            <div class="info-item">最新价: <span class="${upDown}">${lastClose.toFixed(2)}</span></div>
+            <div class="info-item">涨跌额: <span class="${upDown}">${sign}${change.toFixed(2)}</span></div>
+            <div class="info-item">涨跌幅: <span class="${upDown}">${sign}${pct}%</span></div>
+            <div class="info-item">RSI(14): <span>${rsi[rsi.length-1].toFixed(1)}</span></div>
+            <div class="info-item">MACD: <span>${dif[dif.length-1].toFixed(3)}</span></div>
+            <div class="info-item">KDJ: K=${K[K.length-1].toFixed(1)} D=${D[D.length-1].toFixed(1)} J=${J[J.length-1].toFixed(1)}</div>
+        `;
+
+        // ── K线图 ──
+        const traceCandle = {
+            type: 'candlestick',
+            x: dates,
+            open: opens, high: highs, low: lows, close: closes,
+            name: 'K线',
+            increasing: { line: { color: '#ff4757' }, fillcolor: 'rgba(255,71,87,0.3)' },
+            decreasing: { line: { color: '#00d084' }, fillcolor: 'rgba(0,208,132,0.3)' },
+        };
+
+        const traceMA5 = {
+            type: 'scatter', mode: 'lines', x: dates, y: ma.ma5,
+            name: 'MA5', line: { color: '#ff9f43', width: 1 }
+        };
+        const traceMA10 = {
+            type: 'scatter', mode: 'lines', x: dates, y: ma.ma10,
+            name: 'MA10', line: { color: '#4a9eff', width: 1 }
+        };
+        const traceMA20 = {
+            type: 'scatter', mode: 'lines', x: dates, y: ma.ma20,
+            name: 'MA20', line: { color: '#a55eea', width: 1 }
+        };
+
+        // ── MACD ──
+        const colors = macdHist.map(v => v >= 0 ? '#ff4757' : '#00d084');
+        const traceMacdBar = {
+            type: 'bar', x: dates, y: macdHist,
+            name: 'MACD柱', marker: { color: colors }, opacity: 0.7
+        };
+        const traceDif = {
+            type: 'scatter', mode: 'lines', x: dates, y: dif,
+            name: 'DIF', line: { color: '#4a9eff', width: 1.5 }
+        };
+        const traceDea = {
+            type: 'scatter', mode: 'lines', x: dates, y: dea,
+            name: 'DEA', line: { color: '#ffc107', width: 1.5 }
+        };
+
+        // ── KDJ ──
+        const traceK = {
+            type: 'scatter', mode: 'lines', x: dates, y: K,
+            name: 'K', line: { color: '#4a9eff', width: 1.5 }
+        };
+        const traceD = {
+            type: 'scatter', mode: 'lines', x: dates, y: D,
+            name: 'D', line: { color: '#ffc107', width: 1.5 }
+        };
+        const traceJ = {
+            type: 'scatter', mode: 'lines', x: dates, y: J,
+            name: 'J', line: { color: '#ff6b81', width: 1, dash: 'dot' }
+        };
+
+        // ── RSI ──
+        const traceRSI = {
+            type: 'scatter', mode: 'lines', x: dates, y: rsi,
+            name: 'RSI(14)', line: { color: '#a55eea', width: 1.5 }
+        };
+
+        // 布局
+        const layoutBase = {
+            paper_bgcolor: '#0f1117',
+            plot_bgcolor: '#0f1117',
+            font: { color: '#e8eaf0', size: 11 },
+            margin: { t: 10, b: 40, l: 60, r: 10 },
+            xaxis: {
+                gridcolor: '#2a2d3e', zerolinecolor: '#2a2d3e',
+                rangeslider: { visible: false },
+                type: 'category'
+            },
+            legend: { orientation: 'h', y: 1.12, x: 0.5, xanchor: 'center', bgcolor: 'transparent' },
+        };
+
+        const layoutKline = {
+            ...layoutBase,
+            yaxis: { gridcolor: '#2a2d3e', zerolinecolor: '#2a2d3e', title: '价格' },
+            height: 320,
+        };
+
+        const layoutMACD = {
+            ...layoutBase,
+            yaxis: { gridcolor: '#2a2d3e', zerolinecolor: '#2a2d3e', title: 'MACD' },
+            height: 180,
+        };
+
+        const layoutKDJ = {
+            ...layoutBase,
+            yaxis: { gridcolor: '#2a2d3e', zerolinecolor: '#2a2d3e', title: 'KDJ', range: [0, 100] },
+            height: 160,
+        };
+
+        const layoutRSI = {
+            ...layoutBase,
+            yaxis: { gridcolor: '#2a2d3e', zerolinecolor: '#2a2d3e', title: 'RSI', range: [0, 100] },
+            height: 140,
+        };
+
+        const config = { responsive: true, displayModeBar: true };
+
+        Plotly.newPlot('chart', [
+            traceCandle, traceMA5, traceMA10, traceMA20
+        ], layoutKline, config);
+
+        // 添加子图
+        Plotly.newPlot('chart', [
+            traceCandle, traceMA5, traceMA10, traceMA20
+        ], layoutKline, { ...config, id: 'kline' });
+
+        // 简单处理：用 Plotly.relayout 手动添加子图
+        // 这里用 concat 方式分步绘制到同一图表
+        Plotly.react('chart', [
+            traceCandle, traceMA5, traceMA10, traceMA20,
+            traceDif, traceDea, traceMacdBar,
+            traceK, traceD, traceJ,
+            traceRSI
+        ], {
+            ...layoutBase,
+            grid: { rows: 4, columns: 1, subplots: [['xy'],['xy2'],['xy3'],['xy4']], roworder: 'top to bottom' },
+            yaxis:  { title: '价格', gridcolor: '#2a2d3e', domain: [0.62, 1] },
+            yaxis2: { title: 'MACD', gridcolor: '#2a2d3e', domain: [0.40, 0.58] },
+            yaxis3: { title: 'KDJ',  gridcolor: '#2a2d3e', domain: [0.20, 0.38] },
+            yaxis4: { title: 'RSI',  gridcolor: '#2a2d3e', domain: [0, 0.18] },
+            height: 700,
+            xaxis:  { gridcolor: '#2a2d3e', type: 'category', rangeslider: { visible: false } },
+            xaxis2: { gridcolor: '#2a2d3e', type: 'category', anchor: 'free', position: 0 },
+            xaxis3: { gridcolor: '#2a2d3e', type: 'category', anchor: 'free', position: 0 },
+            xaxis4: { gridcolor: '#2a2d3e', type: 'category', anchor: 'free', position: 0 },
+        }, config);
+
+    } catch(e) {
+        document.getElementById('chart').innerHTML = `<div style="padding:40px;text-align:center;color:#ff4757">加载失败：${e.message}</div>`;
+    }
+}
+
+loadChart();
+</script>
+</body>
+</html>
