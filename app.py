@@ -11,10 +11,24 @@ from datetime import datetime, timedelta
 import warnings
 import threading
 import time
+import json
 warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
+
+# 处理 numpy 类型序列化
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (np.integer,)):
+            return int(obj)
+        if isinstance(obj, (np.floating,)):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
+app.json_encoder = NumpyEncoder
 
 # 默认自选股
 DEFAULT_STOCKS = [
@@ -47,6 +61,11 @@ def _cache_set(key, data):
 
 
 # ──────────────────────────────── 数据获取（单股票API） ────────────────────────────────
+
+def get_stock_code(stock):
+    """拼接股票代码：sz002119 / sh600602"""
+    return f"{stock['market']}{stock['code']}"
+
 
 def fetch_realtime(code_with_market):
     """获取实时行情 - 单股票API，秒级响应"""
@@ -413,6 +432,12 @@ def api_selector():
 @app.route('/learn')
 def learn():
     return render_template('learn.html')
+
+
+@app.route('/chart')
+def chart_page():
+    """K线图页面"""
+    return render_template('chart.html')
 
 
 @app.route('/api/chart/<market>/<code>')
